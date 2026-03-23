@@ -1,0 +1,65 @@
+{
+  "generated": "2026-03-23T09:08:31.497214",
+  "total_reviewed": 50,
+  "total_passed": 46,
+  "total_fixed": 4,
+  "total_failed": 0,
+  "issues": [
+    {
+      "blob": "careers/career-11-1031-00.md",
+      "title": "Career 11 1031 00",
+      "word_count": 3894,
+      "issues": [
+        {
+          "type": "tone_issue",
+          "description": "The 'A Day in the Life' section ends abruptly with an incomplete word, which makes the article feel unfinished and unprofessional.",
+          "location": "...listen to lobbyists advocating for specific interests, and engage with advoc"
+        }
+      ],
+      "gemini_quality": "good",
+      "gpt_quality": "excellent"
+    },
+    {
+      "blob": "careers/career-11-3031-00.md",
+      "title": "Career 11 3031 00",
+      "word_count": 4128,
+      "issues": [
+        {
+          "type": "tone_issue",
+          "description": "The article ends abruptly mid-sentence, which appears unfinished and unprofessional.",
+          "location": "...where the manager applies financial"
+        }
+      ],
+      "gemini_quality": "acceptable",
+      "gpt_quality": "excellent"
+    },
+    {
+      "blob": "careers/career-11-3051-02.md",
+      "title": "Career 11 3051 02",
+      "word_count": 3949,
+      "issues": [
+        {
+          "type": "tone_issue",
+          "description": "The article ends abruptly with an incomplete sentence, which appears unprofessional and unfinished.",
+          "location": "One-on-one meetings with team members are common, focusing on perform"
+        }
+      ],
+      "gemini_quality": "acceptable",
+      "gpt_quality": "good"
+    },
+    {
+      "blob": "careers/career-11-9072-00.md",
+      "title": "Career 11 9072 00",
+      "word_count": 4264,
+      "issues": [
+        {
+          "type": "tone_issue",
+          "description": "The tone becomes slightly promotional by directly addressing the reader and promising rewards, which feels more like a recruitment pitch than a neutral educational description.",
+          "location": "If you enjoy a challenge... this path offers significant rewards and opportunities."
+        }
+      ],
+      "gemini_quality": "good",
+      "gpt_quality": "excellent"
+    }
+  ]
+}
