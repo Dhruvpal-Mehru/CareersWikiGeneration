@@ -1,6 +1,6 @@
-# Content Pipeline
+# Career Wiki Content Pipeline
 
-An AI-powered multi-stage pipeline that generates comprehensive career wiki pages at scale, stores them in Azure Blob Storage, and converts them to beautiful HTML for web delivery.
+Production-grade agentic content pipeline using multi-stage LLM orchestration to generate comprehensive career intelligence pages at scale. Combines Google Gemini and Azure OpenAI for generation and quality assurance, with Azure Blob Storage for cloud delivery. Includes resilience patterns, rate limit handling, and pluggable LLM provider architecture.
 
 ---
 
@@ -25,8 +25,10 @@ This pipeline takes a list of US career titles from O*NET and produces 2,000–3
 ## Project Structure
 
 ```
-mascotgo/
+project-root/
 ├── .env                          # API keys (never commit this)
+├── .env.example                  # Template for new developers
+├── .gitignore
 ├── .venv/                        # Python virtual environment
 │
 ├── Connection Check/
@@ -40,7 +42,7 @@ mascotgo/
 │   └── load_data.py              # Data source utilities
 │
 ├── Wiki Production/
-│   └── pipeline.py               # Main generation pipeline (run this overnight)
+│   └── pipeline.py               # Main generation pipeline
 │
 ├── Quality Assurance/
 │   ├── quality_review.py         # Dual-model review + auto-fix
@@ -49,7 +51,7 @@ mascotgo/
 │
 └── Final Wiki Pages/
     ├── convert_to_html.py        # Convert Azure markdown → local HTML pages
-    ├── logo.jpg                  # MascotGO logo (embedded in HTML output)
+    ├── logo.jpg                  # Logo (embedded in HTML output)
     └── html_output/              # Generated HTML pages (open in browser)
 ```
 
@@ -61,7 +63,7 @@ mascotgo/
 
 ```bash
 git clone <repo-url>
-cd mascotgo
+cd project-root
 python -m venv .venv
 
 # Activate (Mac/Linux)
@@ -79,23 +81,35 @@ pip install openai azure-storage-blob python-dotenv requests google-genai markdo
 
 ### 3. Configure environment variables
 
-Create a `.env` file in the root of the project:
+Copy `.env.example` to `.env` and fill in your keys:
+
+```bash
+cp .env.example .env
+```
 
 ```bash
 # Google Gemini (free tier — get key at aistudio.google.com)
 GEMINI_API_KEY=your_gemini_key_here
 
-# Azure OpenAI (used for quality review)
+# Azure OpenAI
 AZURE_OPENAI_KEY=your_azure_openai_key_here
 AZURE_OPENAI_ENDPOINT=https://your-resource.cognitiveservices.azure.com/
 AZURE_OPENAI_DEPLOYMENT=gpt-4o
 
 # Azure Blob Storage
 AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=...
-AZURE_CONTAINER_NAME=wiki
+AZURE_CONTAINER_NAME=your_container_name
 ```
 
-### 4. Verify all connections
+### 4. Create Azure resources
+
+You will need:
+- An Azure OpenAI resource with a GPT-4o deployment
+- An Azure Storage account with a blob container
+
+Add their credentials to `.env` as shown above.
+
+### 5. Verify all connections
 
 ```bash
 python "Connection Check/test_connections.py"
@@ -247,36 +261,6 @@ For 4,000 pages at 2 calls each = 8,000 calls — fits within one day of Gemini 
 
 ---
 
-## Azure Resources
-
-| Resource | Name |
-|---|---|
-| Subscription | Azure subscription 1 |
-| Resource group | personal |
-| OpenAI resource | mascotgo-openai |
-| OpenAI deployment | gpt-4o |
-| Storage account | mascotgostorage |
-| Blob container | wiki |
-| Region | East US |
-
-All resources are under the personal billing account (Dhruvpal Mehru).
-
----
-
-## Cleanup
-
-To delete all Azure resources after the project:
-
-1. Go to portal.azure.com
-2. Search "Resource groups"
-3. Click "personal"
-4. Click "Delete resource group"
-5. Type the name to confirm and click Delete
-
-This removes everything — storage, OpenAI, all generated files.
-
----
-
 ## Known Limitations
 
 - Fields of study (CIP codes) not yet generated — careers only
@@ -287,7 +271,6 @@ This removes everything — storage, OpenAI, all generated files.
 
 ---
 
-## Built By
+## License
 
-Dhruvpal Mehru — content pipeline project.
-For handover questions reach out via the project Slack channel.
+MIT
