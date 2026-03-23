@@ -26,7 +26,6 @@ This pipeline takes a list of US career titles from O*NET and produces 2,000–3
 
 ```
 project-root/
-├── .env                          # API keys (never commit this)
 ├── .env.example                  # Template for new developers
 ├── .gitignore
 ├── .venv/                        # Python virtual environment
