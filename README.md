@@ -1,4 +1,4 @@
-# MascotGO Content Pipeline
+# Content Pipeline
 
 An AI-powered multi-stage pipeline that generates comprehensive career wiki pages at scale, stores them in Azure Blob Storage, and converts them to beautiful HTML for web delivery.
 
@@ -289,5 +289,5 @@ This removes everything — storage, OpenAI, all generated files.
 
 ## Built By
 
-Dhruvpal Mehru — MascotGO content pipeline project.
+Dhruvpal Mehru — content pipeline project.
 For handover questions reach out via the project Slack channel.
