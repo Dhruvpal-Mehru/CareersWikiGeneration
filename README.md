@@ -1,275 +1,203 @@
-# Career Wiki Content Pipeline
+# Career Wiki Pipeline
 
-Production-grade agentic content pipeline using multi-stage LLM orchestration to generate comprehensive career intelligence pages at scale. Combines Google Gemini and Azure OpenAI for generation and quality assurance, with Azure Blob Storage for cloud delivery. Includes resilience patterns, rate limit handling, and pluggable LLM provider architecture.
+An automated pipeline that builds a comprehensive career encyclopedia from public labor data. It pulls occupation data from O\*NET and BLS, enriches each career with AI-generated content, publishes wiki-style pages to Azure Blob Storage, runs dual-model quality review, and produces both styled HTML pages and an interactive career relationship graph.
 
----
+## Architecture
 
-## What This Does
-
-This pipeline takes a list of US career titles from O*NET and produces 2,000–3,000 word educational wiki pages for each one — covering salary ranges, day in the life, interview prep, 30/60/90 day plans, and more. Pages are stored as markdown in Azure Blob Storage and can be converted to HTML for viewing.
-
----
-
-## Tech Stack
-
-| Component | Service |
-|---|---|
-| LLM (generation) | Google Gemini 2.5 Flash (free tier) |
-| LLM (quality review) | Gemini 2.5 Flash + Azure OpenAI GPT-4o |
-| Storage | Azure Blob Storage |
-| Language | Python 3.14 |
-| Environment | PyCharm / venv |
-
----
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  Phase 1 — Data Acquisition                                        │
+│                                                                     │
+│  prepare_data.py ──→ trim_data.py ──→ final_data.json (3,300)      │
+│  (O*NET + BLS)       (filter/rank)                                  │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼──────────────────────────────────────┐
+│  Phase 2 — Content Generation                                       │
+│                                                                     │
+│  final_data.json ──→ pipeline.py ──→ Azure Blob Storage             │
+│                      (Gemini API)     careers/*.md                   │
+│                                                                     │
+│                      update_pipeline.py (force-overwrite mode)       │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼──────────────────────────────────────┐
+│  Phase 3 — Quality Review                                           │
+│                                                                     │
+│  quality_review.py ──→ quality_report.json                          │
+│  (Gemini 2.5 Pro + GPT-4o dual review, auto-fix)                    │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼──────────────────────────────────────┐
+│  Phase 4 — Output                                                   │
+│                                                                     │
+│  convert_to_html.py ──→ html_output/*.html (styled career pages)    │
+│  career_graph_interactive.py ──→ career_graph.html (network viz)    │
+│  career_graph.py ──→ career_graph.png (static image)                │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
 ## Project Structure
 
 ```
-project-root/
-├── .env.example                  # Template for new developers
-├── .gitignore
-├── .venv/                        # Python virtual environment
-│
-├── Connection Check/
-│   └── test_connections.py       # Verify all API connections work
-│
 ├── Data Management/
-│   ├── final_data.json           # 4,000 prepared career entries (ready to use)
-│   ├── occupation_data.json      # Raw O*NET career data
-│   ├── prepare_data.py           # Download O*NET data from source
-│   ├── trim_data.py              # Filter + prioritize 4,000 high-salary careers
-│   └── load_data.py              # Data source utilities
+│   ├── load_data.py               # Initial data source exploration
+│   ├── prepare_data.py            # Pull from O*NET + BLS, deduplicate
+│   ├── trim_data.py               # Rank by salary keywords, trim to 3,300
+│   ├── occupation_data.json       # Raw combined dataset
+│   └── final_data.json            # Production dataset (3,300 careers)
 │
-├── Wiki Production/
-│   └── pipeline.py               # Main generation pipeline
+├── Final Wiki Pages/
+│   ├── pipeline.py                # Main generation pipeline (skip-if-exists)
+│   ├── update_pipeline.py         # Force-overwrite pipeline
+│   ├── quality_review.py          # Dual-model QA with auto-fix
+│   ├── view_report.py             # Print quality report summary
+│   ├── convert_to_html.py         # Markdown → styled HTML pages
+│   ├── career_graph.py            # Static PNG network graph
+│   ├── career_graph_interactive.py # Interactive HTML network graph
+│   ├── test_connections.py        # Verify API + storage connections
+│   └── html_output/               # Generated HTML career pages
 │
-├── Quality Assurance/
-│   ├── quality_review.py         # Dual-model review + auto-fix
-│   ├── view_report.py            # Print quality report summary
-│   └── quality_report_*.json     # Generated reports (auto-saved after each run)
-│
-└── Final Wiki Pages/
-    ├── convert_to_html.py        # Convert Azure markdown → local HTML pages
-    ├── logo.jpg                  # Logo (embedded in HTML output)
-    └── html_output/              # Generated HTML pages (open in browser)
+├── logo.jpg                       # Branding asset
+├── .env                           # API keys (not committed)
+└── README.md
 ```
-
----
 
 ## Setup
 
-### 1. Clone and create virtual environment
+### Prerequisites
+
+- Python 3.10+
+- Azure Storage account with a blob container
+- Gemini API key (Google AI Studio)
+- Azure OpenAI deployment (for quality review)
+
+### Environment Variables
+
+Create a `.env` file in the project root:
+
+```env
+GEMINI_API_KEY=your_gemini_key
+AZURE_STORAGE_CONNECTION_STRING=your_connection_string
+AZURE_CONTAINER_NAME=your_container
+AZURE_OPENAI_KEY=your_azure_openai_key
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_DEPLOYMENT=your_deployment_name
+```
+
+### Install Dependencies
 
 ```bash
-git clone <repo-url>
-cd project-root
-python -m venv .venv
-
-# Activate (Mac/Linux)
-source .venv/bin/activate
-
-# Activate (Windows)
-.venv\Scripts\activate
+pip install google-genai openai azure-storage-blob python-dotenv requests markdown networkx matplotlib
 ```
 
-### 2. Install dependencies
+### Verify Connections
 
 ```bash
-pip install openai azure-storage-blob python-dotenv requests google-genai markdown
+python test_connections.py
 ```
 
-### 3. Configure environment variables
+## Usage
 
-Copy `.env.example` to `.env` and fill in your keys:
+### 1. Prepare the Dataset
+
+Pull occupation data from O\*NET and BLS, deduplicate, and trim to the top 3,300 careers ranked by salary relevance:
 
 ```bash
-cp .env.example .env
+cd "Data Management"
+python prepare_data.py
+python trim_data.py
 ```
+
+This produces `final_data.json` — the input for all downstream steps.
+
+### 2. Generate Wiki Pages
+
+Run the main pipeline. It enriches each career with structured data via the Gemini API, then generates a 2,000–3,000 word wiki page and uploads it to Azure Blob Storage. The pipeline checkpoints automatically — if it stops, re-running skips careers that already have a blob.
 
 ```bash
-# Google Gemini (free tier — get key at aistudio.google.com)
-GEMINI_API_KEY=your_gemini_key_here
-
-# Azure OpenAI
-AZURE_OPENAI_KEY=your_azure_openai_key_here
-AZURE_OPENAI_ENDPOINT=https://your-resource.cognitiveservices.azure.com/
-AZURE_OPENAI_DEPLOYMENT=gpt-4o
-
-# Azure Blob Storage
-AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=...
-AZURE_CONTAINER_NAME=your_container_name
+cd "Final Wiki Pages"
+python pipeline.py
 ```
 
-### 4. Create Azure resources
-
-You will need:
-- An Azure OpenAI resource with a GPT-4o deployment
-- An Azure Storage account with a blob container
-
-Add their credentials to `.env` as shown above.
-
-### 5. Verify all connections
+To force-regenerate existing pages (e.g., after prompt changes):
 
 ```bash
-python "Connection Check/test_connections.py"
+python update_pipeline.py                          # Regenerate all
+python update_pipeline.py --batch 100              # First 100 only
+python update_pipeline.py --only-existing           # Only overwrite existing pages
+python update_pipeline.py --ids career-29-1141-00   # Specific career IDs
 ```
 
-Expected output:
-```
-Testing Gemini...
-✅ Gemini works: Hello! ...
-Testing Azure OpenAI...
-✅ OpenAI works: Hello! ...
-Testing Azure Blob Storage...
-✅ Blob Storage works: test file uploaded!
-🚀 All connections working — ready to build!
-```
+### 3. Run Quality Review
 
----
-
-## Running the Pipeline
-
-### Step 1 — Prepare career data (skip if final_data.json already exists)
+Dual-model review using both Gemini 2.5 Pro and GPT-4o. Each page is checked for factual errors, tone issues, missing sections, and word count. Pages with issues are automatically fixed and re-uploaded.
 
 ```bash
-python "Data Management/prepare_data.py"
-python "Data Management/trim_data.py"
+python quality_review.py
+python view_report.py    # Print summary
 ```
 
-### Step 2 — Generate wiki pages
+### 4. Generate Outputs
+
+**Styled HTML pages** — converts every markdown page in Azure to a branded, responsive HTML page:
 
 ```bash
-python "Wiki Production/pipeline.py"
+python convert_to_html.py
+# Output: html_output/*.html
 ```
 
-This will:
-- Load all careers from `Data Management/final_data.json`
-- Generate enriched 2,000–3,000 word markdown for each
-- Upload to Azure Blob Storage under `careers/`
-- Skip pages already generated (checkpoint system)
-- Resume automatically if stopped
-
-Expected output:
-```
-📂 Loaded 4000 careers
-🚀 Starting pipeline — safe to leave running overnight!
-
-[1/4000] Chief Executives
-⚙️  Enriching: Chief Executives
-📝 Writing wiki: Chief Executives
-✅ Uploaded: careers/career-11-1011-00.md
-
-📊 Progress: 50 done, 0 skipped, 0 failed
-```
-
-### Step 3 — Quality review
+**Interactive career graph** — builds a force-directed network visualization showing how careers relate to each other. Opens in any browser with zoom, pan, hover, click-to-explore, search, and legend filtering:
 
 ```bash
-python "Quality Assurance/quality_review.py"
+python career_graph_interactive.py
+# Output: career_graph.html
 ```
 
-Runs every page through both Gemini and GPT-4o checking for:
-- Missing required sections
-- Factual errors or unrealistic statistics
-- Unprofessional or off-tone writing
-
-Automatically fixes issues and re-uploads to Azure. Saves a JSON report on completion.
-
-To review a subset only (e.g. first 50 for demo), edit `quality_review.py`:
-```python
-blobs = list(container.list_blobs(name_starts_with="careers/"))[:50]
-```
-
-View the report after it completes:
-```bash
-python "Quality Assurance/view_report.py"
-```
-
-### Step 4 — Convert to HTML
+**Static graph image** — PNG export for presentations or print:
 
 ```bash
-python "Final Wiki Pages/convert_to_html.py"
+python career_graph.py --nodes 500
+# Output: career_graph.png
 ```
 
-Downloads all markdown from Azure and converts each to a styled HTML page saved in `Final Wiki Pages/html_output/`. Open any `.html` file in your browser to view.
+## Pipeline Details
 
----
+### Content Generation
 
-## Pipeline Architecture
+Each career goes through a two-step process:
 
-```
-O*NET career data (Data Management/final_data.json)
-              ↓
-Stage 1: Context enrichment (Gemini)
-              ↓ salary, skills, companies, city data
-Stage 2+3: Content generation (Gemini)
-              ↓ 2,000–3,000 word markdown
-Stage 4: Quality review (Gemini + GPT-4o)
-              ↓ auto-fix if issues found
-Stage 5: Azure Blob Storage (careers/ folder)
-              ↓
-HTML converter → Final Wiki Pages/html_output/
-```
+1. **Enrichment** — Gemini receives the career title and O\*NET description, returns structured JSON with salary ranges, top industries, skills, education pathways, career trajectories, interview prep, and more.
 
----
+2. **Wiki writing** — Gemini receives the enrichment data and writes a polished markdown article with standardized sections: Overview, Day in the Life, Essential Skills, Education Pathways, Salary & Compensation, Industry Outlook, Interview Prep, 30/60/90 Day Plan, Pros & Cons, and Related Careers.
 
-## Content Structure
+The pipeline includes exponential backoff retry logic for rate limits and transient API errors.
 
-Every generated wiki page includes:
+### Quality Review
 
-- Frontmatter (title, type, description)
-- Overview
-- A Day in the Life
-- Core Knowledge Areas
-- Essential Skills (technical, soft, tools)
-- Education and Training Pathways
-- Career Trajectories and Opportunities
-- Salary and Compensation (entry/mid/senior + by city)
-- Industry Outlook and Future Trends
-- Interview Prep and Getting Hired
-- Getting Started — 30/60/90 Day Plan
-- Pros and Cons
-- Related Careers
+The review pipeline pulls pages from Azure and runs each through two independent AI reviewers:
 
----
+- **Gemini 2.5 Pro** — checks for factual errors, tone issues, unrealistic statistics
+- **GPT-4o** — second opinion on the same criteria
 
-## Swapping LLM Providers
+Results are merged (deduplicated by issue type), and any page with issues is automatically fixed by Gemini and re-uploaded. A JSON report is saved locally.
 
-The pipeline is provider-agnostic. All config lives in `.env` — swap providers by changing keys and updating the model name in `pipeline.py`:
+### Career Graph
 
-```python
-# Current: Gemini 2.5 Flash (free)
-GEMINI_MODEL = "gemini-2.5-flash-preview-05-20"
+The interactive graph represents career relationships using four connection layers:
 
-# To switch to Azure OpenAI GPT-4o:
-# Replace gemini.models.generate_content() calls
-# with openai_client.chat.completions.create()
-```
+- **Minor group mesh** — careers in the same O\*NET detailed group are fully interconnected
+- **Major group links** — each career connects to 4–6 peers in its broader family
+- **Inter-group bridges** — 30+ cross-cluster relationships between related fields
+- **Hub spokes** — central node connects to every career for the radial layout
 
----
+Node colors represent 23 career families (Management, Healthcare, Tech, etc.). The layout is pre-computed using networkx's spring algorithm with 300 iterations, then baked into the HTML — no live physics, just smooth zoom/pan interaction.
 
-## Rate Limits and Cost
+## Data Sources
 
-| Service | Limit | Cost |
-|---|---|---|
-| Gemini 2.5 Flash | 10,000 requests/day | Free |
-| Azure OpenAI GPT-4o | 300 RPM | Pay per token |
-| Azure Blob Storage | 5GB / 50K ops free | Free tier |
-
-For 4,000 pages at 2 calls each = 8,000 calls — fits within one day of Gemini free quota.
-
----
-
-## Known Limitations
-
-- Fields of study (CIP codes) not yet generated — careers only
-- No Azure CDN configured — pages served directly from blob storage
-- No Azure SQL progress tracking — uses blob existence check as checkpoint instead
-- Docker containerization not implemented
-- ~1–3% of pages may fail during enrichment due to JSON parsing errors — re-running the pipeline retries these automatically
-
----
+- [O\*NET 29.0](https://www.onetcenter.org/database.html) — 1,016 base occupations + alternate titles
+- [BLS Occupational Outlook Handbook](https://www.bls.gov/ooh/) — supplementary career categories
 
 ## License
 
-MIT
+This project is for educational purposes. O\*NET data is public domain (U.S. Department of Labor). BLS data is public domain. AI-generated content is original.
