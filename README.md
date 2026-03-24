@@ -200,4 +200,4 @@ Node colors represent 23 career families (Management, Healthcare, Tech, etc.). T
 
 ## License
 
-This project is for educational purposes. O\*NET data is public domain (U.S. Department of Labor). BLS data is public domain. AI-generated content is original.
+This project is for educational purposes. O\*NET data is public domain (U.S. Department of Labor). BLS data is public domain.
